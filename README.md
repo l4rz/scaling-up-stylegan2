@@ -17,7 +17,7 @@ This article is a continuation of my previous write-up, ["Practical aspects of S
 I have trained StyleGAN2 ("SG2") from scratch with a dataset of female portraits at 1024px resolution. The samples quality was further improved by scaling the number of trainable parameters up by ~200%, allowing to achieve better FID50K metrics as well as close to photorealistic samples quality.
 
 ![](images/teaser.jpg)
-*Curated samples, XL model, sampled with Ψ=0.60*
+*Curated samples, XXL and XL models, sampled with Ψ=0.60*
 
 ## Table of Contents
 1. [Background](#background)<br>
