@@ -27,6 +27,8 @@ I have trained StyleGAN2 ("SG2") from scratch with a dataset of female portraits
   3.2. [The L model](#model-l)<br>
   3.3. [The XL and XXL models](#models-xl-xxl)<br>
 4. [Conclusion](#conclusion)<br>
+
+
 A. [Dataset enhancement techniques](#techniques)<br>
 B. [Negative results](#negatives)<br>
 C. [Some ideas to explore](#speculations)<br>
