@@ -12,7 +12,7 @@ Disclaimer: I might be completely wrong about anything expressed below. I haven'
 </b>
 
 ## TL;DR
-This article is a continuation of my previous write-up, ["Practical aspects of StyleGAN2 training"](https://github.com/l4rz/practical-aspects-of-stylegan2-training).
+This write-up is a continuation of my previous one, ["Practical aspects of StyleGAN2 training"](https://github.com/l4rz/practical-aspects-of-stylegan2-training).
 
 I have trained StyleGAN2 ("SG2") from scratch with a dataset of female portraits at 1024px resolution. The samples quality was further improved by scaling the number of trainable parameters up by ~200%, allowing to achieve better FID50K metrics as well as close to photorealistic samples quality.
 
@@ -147,7 +147,10 @@ def nf(stage):
 
 I opted to cap the feature map counts at 512 to strike a balance between increasing capacity and training computational cost. This configuration resulted in 70K parameters network (vs 59K in `config-f` at 1024px).
 
-As StyleGAN2-ADA ("SG2-ADA") code was released soon after I started the `L` model training run, I decided to switch to SG-ADA to take advantage of ADA augmentations and mixed FP16/FP32 precision. Mixed precision training led to significant speedup, 100 seconds per kimg versus 135 seconds per kimg for FP32 with 4x Tesla V100 GPUs.
+As StyleGAN2-ADA ("SG2-ADA") code was released soon after I started the `L` model training run, I decided to switch to SG2-ADA to take advantage of ADA augmentations and mixed FP16/FP32 precision. Mixed precision training led to significant speedup, 100 seconds per kimg versus 135 seconds per kimg for FP32 with 4x Tesla V100 GPUs.
+
+(If you're experiencing issues with SG2-ADA on RTX 3000 series, please check [this issue open in the official repo](
+https://github.com/NVlabs/stylegan2-ada/issues/32))
 
 ___Note on mixed precision training___ With SG2-ADA, mixed precision training works by casting some of parameters to FP16 before evaluating. It controlled by `args.G_args.num_fp16_res` and `args.D_args.num_fp16_res` values in `train.py`. For instance, `num_fp16_res = 4` means that FP16 precision is applied to the 4 highest resolutions layers. I observed that the default value of 4 is generally fine though in most cases it can be increased to 5 to conserve GPU memory and use larger minibatches. Higher values sometimes destabilize the training and make it is impossible to train from scratch with rather complex datasets. In this case the `num_fp16_res` value should be kept low initially and then increased later; trainable parameters are stored in PKL with full FP32 precision. I failed to notice the effect of reasonable `num_fp16_res` values on FID50K scores and subjective quality of samples.
 
@@ -289,7 +292,7 @@ __Enhancing training set images__
 Enhancing training set images with modern super-resolution techniques can lead to better performance and allow to use frames extracted from videos as well. Care should be used while choosing the technique, as there is still no domain-independent image enhancer, to the best of my knowledge. Even the decent ones such as Remini give good results with faces but tend to blur other objects.
 
 __Augmentations ops with higher resolution images__
-It is mentioned in [SG2-ADA paper](https://arxiv.org/abs/2006.06676) that authors specifically focused on reducing the loss of high-frequency details during geometric transformations in augmentations. While neither [Karras et al](https://arxiv.org/abs/2006.06676), nor [Zhao (b) et al](https://arxiv.org/abs/2006.10738) use zoom as an operation in their augs pipeline, [Zhao (b) et al "Image Augmentations for GAN Training" paper](https://arxiv.org/abs/2006.02595) use zoomins and zoomouts with bilinear interpolation. Taking into account the tendency of SG2 to memorize image artifacts, there is concern that these operations might compromise the samples quality. Since most images in the 1024px training set are actually downscaled from the originals of the higher resolution, it would be interesting to implement and test the zoomin augmentation operation that returns a fragment of the original higher resolution image. This could help to preserve the finer details.
+It is mentioned in [SG2-ADA paper](https://arxiv.org/abs/2006.06676) that authors specifically focused on reducing the loss of high-frequency details during geometric transformations in augmentations. While neither [Karras et al](https://arxiv.org/abs/2006.06676), nor [Zhao (b) et al](https://arxiv.org/abs/2006.10738) use zoom as an operation in their augs pipeline, [Zhao (a) et al "Image Augmentations for GAN Training" paper](https://arxiv.org/abs/2006.02595) use zoomins and zoomouts with bilinear interpolation. Taking into account the tendency of SG2 to memorize image artifacts, there is concern that these operations might compromise the samples quality. Since most images in the 1024px training set are actually downscaled from the originals of the higher resolution, it would be interesting to implement and test the zoomin augmentation operation that returns a fragment of the original higher resolution image. This could help to preserve the finer details.
 
 ## Written by
 
