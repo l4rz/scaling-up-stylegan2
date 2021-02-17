@@ -178,7 +178,7 @@ I found γ values of 5..6 to be optimal for `TFHQ36K` dataset. Lowering γ below
 
 It turned out that augmentations are quite beneficial even with a rather large `TFHQ36K` dataset. Without augmentations, the training collapses quite soon. Turning it off later leads to mode dropping. It could be due to the fact that despite being face-aligned  `TFHQ36K` is still more variant (more poses) compared to `FFHQ` dataset. Similarly, the `L` model, I observed no collapses during training of `XL` and `XXL` models. Compared to my previous attempts to train such a large network with increased feature maps counts also in lower resolution layers, the network achieved a reasonable samples quality much faster.
 
-The XL model was trained for 15000 kimg, reaching FID50K of 2.50. The same FID50K was achieved by `XXL` model around 8000 kimg ([training log](trainlog.txt)). For the `XXL` model the best FID50K was 2.40 after 11000 kimg. If the correct hyperparameters have been chosen and the model does not diverge, it is useful to continue the training further after achieving a good FID50K. Samples get better subjectively, with starker features and better colors.
+The XL model was trained for 15000 kimg, reaching FID50K of 2.50. The same FID50K was achieved by `XXL` model around 8000 kimg ([training log](trainlog.txt)). For the `XXL` model the best FID50K was 2.40 after 11000 kimg. (<b>Update</b>: FID50K reached 1.85 after 25000 kimg with learning rate set to 1.5 × 10<sup>-4</sup>, γ = 5 and `num_fp16_res = 5`.) If the correct hyperparameters have been chosen and the model does not diverge, it is useful to continue the training further after achieving a good FID50K. Samples get better subjectively, with starker features and better colors.
 
 ![](images/comparison-l-xl-xxl.jpg)
 
@@ -246,6 +246,72 @@ if eyes_v_delta_percent < 10 and delta_offset < 90:
 ```
 
 Alternatively, one can use [pbaylies script](https://github.com/pbaylies/stylegan-encoder/blob/master/align_images.py) to align images based on facial landmarks.
+
+__Pose homogenization (updated)__
+
+Running [U-2-Net masks/silhouettes separation](https://github.com/NathanUA/U-2-Net), followed by comparing the histograms of two image halves (split by a vertical centerline) helped me to get rid of some really assymetric images.
+
+```
+# a modified u2net_test.py
+
+def return_output(image_name,pred):
+    predict = pred
+    predict = predict.squeeze()
+    predict_np = predict.cpu().data.numpy()
+    im = Image.fromarray(predict_np*255).convert('RGB')
+    img_name = image_name.split(os.sep)[-1]
+    image = io.imread(image_name)
+    imo = im.resize((image.shape[1],image.shape[0]),resample=Image.BILINEAR)
+    return imo
+
+...
+
+for i_test, data_test in enumerate(test_salobj_dataloader):
+    inputs_test = data_test['image']
+
+inputs_test = inputs_test.type(torch.FloatTensor)
+
+# run U-2-Net inference
+if torch.cuda.is_available():
+    inputs_test = Variable(inputs_test.cuda())
+else:
+    inputs_test = Variable(inputs_test)
+
+d1,d2,d3,d4,d5,d6,d7= net(inputs_test)
+
+# normalization
+pred = d1[:,0,:,:]
+pred = normPRED(pred)
+
+imo = return_output(str(file),pred)
+# pil to opencv
+img = numpy.array(imo)
+# RGB to BGR
+img = img[:, :, ::-1].copy()
+
+# now calculate the symmetry metric
+width = img.shape[1]
+width_cutoff = width // 2
+s1 = img[:, :width_cutoff]
+s2 = cv.flip(img[:, width_cutoff:],1)
+G_Y1 = cv.reduce(s1, 1 ,cv.REDUCE_SUM,dtype=cv.CV_32F)
+G_Y2 = cv.reduce(s2, 1 ,cv.REDUCE_SUM,dtype=cv.CV_32F)
+metric = cv.compareHist(G_Y1 ,G_Y2 ,cv.HISTCMP_BHATTACHARYYA)
+
+# you should run this with a couple of really symmetric
+# and assymetric samples to check the metric value.
+# then you should be able to find a cutoff threshold
+if metric < 0.06:
+    # save image
+```
+
+print(file,"score",compare_val)
+
+
+I tried FID metrics on [U-2-Net separated masks/silhouettes](https://github.com/NathanUA/U-2-Net) too, this didn't worked for me as well.
+
+
+I tried to use FID score (e.g. [pytorch-fid](https://github.com/mseitzer/pytorch-fid)) for accurate similarity measurement at a pose-wise level. It didn't worked; FID score doesn't have any sense of global structure and pays more attention to textures than to shapes.
 
 ## B. Negative results<a name="negatives"></a>
 
