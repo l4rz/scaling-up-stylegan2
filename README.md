@@ -303,14 +303,6 @@ if metric < 0.06:
     # save image
 ```
 
-print(file,"score",compare_val)
-
-
-I tried FID metrics on [U-2-Net separated masks/silhouettes](https://github.com/NathanUA/U-2-Net) too, this didn't worked for me as well.
-
-
-I tried to use FID score (e.g. [pytorch-fid](https://github.com/mseitzer/pytorch-fid)) for accurate similarity measurement at a pose-wise level. It didn't worked; FID score doesn't have any sense of global structure and pays more attention to textures than to shapes.
-
 ## B. Negative results<a name="negatives"></a>
 
 A couple of techniques were explored that ended up yielding worse results or not affecting performance.
