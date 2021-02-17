@@ -247,9 +247,7 @@ if eyes_v_delta_percent < 10 and delta_offset < 90:
 
 Alternatively, one can use [pbaylies script](https://github.com/pbaylies/stylegan-encoder/blob/master/align_images.py) to align images based on facial landmarks.
 
-__Pose homogenization (updated)__
-
-Running [U-2-Net masks/silhouettes separation](https://github.com/NathanUA/U-2-Net), followed by comparing the histograms of two image halves (split by a vertical centerline) helped me to get rid of some really assymetric images.
+__Pose homogenization (updated)__ Running [U-2-Net masks/silhouettes separation](https://github.com/NathanUA/U-2-Net), followed by comparing the histograms of two image halves (split by a vertical centerline) helped me to get rid of some really assymetric images.
 
 ```
 # a modified u2net_test.py
