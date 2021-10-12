@@ -27,11 +27,10 @@ I have trained StyleGAN2 ("SG2") from scratch with a dataset of female portraits
   3.2. [The L model](#model-l)<br>
   3.3. [The XL and XXL models](#models-xl-xxl)<br>
 4. [Conclusion](#conclusion)<br>
-
-
-A. [Dataset enhancement techniques](#techniques)<br>
-B. [Negative results](#negatives)<br>
-C. [Some ideas to explore](#speculations)<br>
+5. [Update: The XXXL model (250M parameters, doubled latent size](#model-xxxl)<br>
+Annex A. [Dataset enhancement techniques](#techniques)<br>
+Annex B. [Negative results](#negatives)<br>
+Annex C. [Some ideas to explore](#speculations)<br>
 
 
 ## Background<a name="background"></a>
@@ -52,11 +51,12 @@ The models configurations are summarized below.
 
 | Model name    | 64px fmaps | 128px fmaps | 256px fmaps | 512px fmaps | 1024px fmaps | total parameters
 | ------------- |:-------------:| -----:|-----:|-----:|-----:|-----:|
-| config-f | 512 | 256 | 128 | 64 | 32 | 59K |
-| M | 512 | 384 | 192 | 96 | 48 | 64K |
-| L | 512 | 512 | 256 | 128 | 64 | 70K |
-| XL | 640 | 640 | 320 | 160 | 80 | 106K |
-| XXL | 768 | 768 | 384 | 192 | 96 | 150K |
+| config-f | 512 | 256 | 128 | 64 | 32 | 59M |
+| M | 512 | 384 | 192 | 96 | 48 | 64M |
+| L | 512 | 512 | 256 | 128 | 64 | 70M |
+| XL | 640 | 640 | 320 | 160 | 80 | 106M |
+| XXL | 768 | 768 | 384 | 192 | 96 | 150M |
+| XXXL | 1024 | 768 | 384 | 192 | 96 | 250M |
 
 <b>NOTE:</b> feature map counts in the lowest-resolution layers (32px and lower) are equal to 64px feature map count.
 
@@ -178,7 +178,7 @@ I found γ values of 5..6 to be optimal for `TFHQ36K` dataset. Lowering γ below
 
 It turned out that augmentations are quite beneficial even with a rather large `TFHQ36K` dataset. Without augmentations, the training collapses quite soon. Turning it off later leads to mode dropping. It could be due to the fact that despite being face-aligned  `TFHQ36K` is still more variant (more poses) compared to `FFHQ` dataset. Similarly, the `L` model, I observed no collapses during training of `XL` and `XXL` models. Compared to my previous attempts to train such a large network with increased feature maps counts also in lower resolution layers, the network achieved a reasonable samples quality much faster.
 
-The XL model was trained for 15000 kimg, reaching FID50K of 2.50. The same FID50K was achieved by `XXL` model around 8000 kimg ([training log](trainlog.txt)). For the `XXL` model the best FID50K was 2.40 after 11000 kimg. (<b>Update</b>: FID50K reached 1.85 after 25000 kimg with learning rate set to 1.5 × 10<sup>-4</sup>, γ = 5 and `num_fp16_res = 5`.) If the correct hyperparameters have been chosen and the model does not diverge, it is useful to continue the training further after achieving a good FID50K. Samples get better subjectively, with starker features and better colors.
+The XL model was trained for 15000 kimg, reaching FID50K of 2.50. The same FID50K was achieved by `XXL` model around 8000 kimg ([training log](trainlog-xxl.txt)). For the `XXL` model the best FID50K was 2.40 after 11000 kimg. (<b>Update</b>: FID50K reached 1.85 after 25000 kimg with learning rate set to 1.5 × 10<sup>-4</sup>, γ = 5 and `num_fp16_res = 5`.) If the correct hyperparameters have been chosen and the model does not diverge, it is useful to continue the training further after achieving a good FID50K. Samples get better subjectively, with starker features and better colors.
 
 ![](images/comparison-l-xl-xxl.jpg)
 
@@ -213,7 +213,43 @@ Regularization settings should be adjusted for the particular training set. It s
 
 __Acknowledgments__ I would like to thank Tero Karras et al; also Shawn, Gwern, Aydao, Sid and Louis for helpful input and my friend for providing the GPUs.
 
-## A. Dataset enhancement thechniques<a name="techniques"></a>
+### Update: the XXXL model (250M parameters, doubled latent size)<a name="model-xxxl"></a>
+
+Motivated by Aydao's successful [This anime does not exist ("TADNE")](https://thisanimedoesnotexist.ai) model, with increased latent space dimensionality, ([details](https://www.gwern.net/Faces#extended-stylegan2-danbooru2019-aydao) on Gwern's website) I decided to scale SG2 even further, as far as VRAM and compute limits would allow. The latent size has been doubled (`z_dim = w_dim = 1024`), the mapping network has been made shallower (`map = 6`), and the total parameter count has been increased to ~250M (by specifying `channels_dict = { 1024:96, 512:192, 256:384, 128:768, 64:1024, 32:1024, 16:1024, 8:1024, 4:1024 }` in both D and G in `networks.py`), making it >4× larger than default `config-f` settubgs. For this experiment I used [the official StyleGAN2 PyTorch implementation](https://github.com/NVlabs/stylegan2-ada-pytorch). I was able to fit this configuration into 32Gb of VRAM by using mixed precision (`num_fp16_res = 5`).
+
+Because the goal of this experiment was to investigate the disentanglement capabilities of network with increased capacity and latent size, the original `TFHQ36K` dataset was supplemented with N=12K clothed and lingerie female portraits, yielding the somewhat perplexed `XFHQ46K` dataset.
+
+To save compute, I downscaled the `XFHQ46K` dataset to 512px resolution; with mixed precision, it took ~85 seconds per kimg on 4x Tesla V100s (vs ~130 seconds per kimg in 1024px). After approximately 8000 kimg I continued training in 1024px; the transition was achieved by freezing all layers of D and G except the highest resolution (1024px) ones and continuing the training with lowered LR of 1 × 10<sup>-4</sup> for 1000 kimg. (I'm not sure if freezing the lower resolution layers during the transition is actually necessary; it's just what worked for me.) Having accumulated ~10000 kimg with the usual LR of 1.5...1 × 10<sup>-3</sup>, by gradual tapering of LR I was able to reach FID50K=1.xx on `XFHQ46K` dataset.
+
+<!-- (Stylemix was off and gamma was 6.5 just like XXL) -->
+
+For the `XXXL` model, the Ψ sweetspot has increased to 0.9, which was instantly visible. The smaller `XXL` model produced the most diverse yet coherent samples around 0.6-0.7; further increasing the Ψ value started to produce more lower quality samples. This indicates that the latent space with dimensionality of 512 is indeed too "tight" for portraits. The network was also able to synthesize clothed models as well, resulting in a greater diversity of poses.
+
+![](images/final-xxxl-collage.jpg)
+
+*Curated uncropped samples, the XXXL model, Ψ=0.85*
+
+The final experiment involved training with `COSPLAYFACE24K` 512px dataset, composed of 20K faces scrapped from cosplay sets, augmented with 4K faces from `XFHQ46K`. Cropping was similar to that of the 'FFHQ' dataset, but with more headroom. Due to variety of styles in cosplay (hair colors, headgear, makeup) `COSPLAYFACE24K` was quite more diverse. I trained it for 18000 kimg, with mixing regularization probability `args.G_args.style_mixing_prob` set to `0.2` and R1 regularization
+weight `d_loss.gamma` to `7.5`.
+
+![](images/cosplayface-collage.jpg)
+
+*Curated samples, the XXXL model trained with COSPLAYFACE24K dataset, Ψ=0.60*
+<!-- 159 169 235 253 312 362
+512 572 577 619 671 688
+731 795 917 927 1037  1185
+1358 1377 1458 1520 1907  2007
+2139 2663 2724 2902 3054  3109
+3165 3172 3254 3575 3822 3872 -->
+
+Because of the greater variety of modes and the smaller dataset size, the quality was nowhere near that of the `XXXL` model trained with a ragher homogeneous `XFHQ46K` dataset.
+
+Two snapshots of the `XXXL` model trained with `COSPLAYFACE24K` dataset are available for download:
+
+* https://l4rz.net/cosplayface-snapshot-004000-18160-FID367.pkl (trained for 18000 kimg with learning rate of 1 × 10<sup>-3</sup>)
+* https://l4rz.net/cosplayface-snapshot-001360-19520-FID359.pkl (the previous snapshot, trained for 1500 kimg more with decreased learning rate of 6.6 × 10<sup>-4</sup>)
+
+## Annex A. Dataset enhancement thechniques<a name="techniques"></a>
 
 __Filtering out blurry images__ BRISQUE (["No-Reference Image Quality Assessment in the Spatial Domain"](https://ieeexplore.ieee.org/document/6272356/), [code](https://github.com/bukalapak/pybrisque)) allows to remove blurry images by rejecting ones with BRISQUE score above a certain set value.
 
@@ -303,7 +339,7 @@ if metric < 0.06:
     # save image
 ```
 
-## B. Negative results<a name="negatives"></a>
+## Annex B. Negative results<a name="negatives"></a>
 
 A couple of techniques were explored that ended up yielding worse results or not affecting performance.
 
@@ -344,7 +380,7 @@ __Asymmetric D/G capacity__ I tried doubling the capacity of some layers in G ne
 
 __Increasing mapping layers to 12__ Did not notice any benefits; in fact, the mapping network can be made even shallower, as it was mentioned in [SG2-ADA paper](https://arxiv.org/abs/2006.06676).
 
-## C. Some ideas to explore<a name="speculations"></a>
+## Annex C. Some ideas to explore<a name="speculations"></a>
 
 __Enhancing training set images__
 Enhancing training set images with modern super-resolution techniques can lead to better performance and allow to use frames extracted from videos as well. Care should be used while choosing the technique, as there is still no domain-independent image enhancer, to the best of my knowledge. Even the decent ones such as Remini give good results with faces but tend to blur other objects.
