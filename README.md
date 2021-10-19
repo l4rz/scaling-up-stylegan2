@@ -27,7 +27,7 @@ I have trained StyleGAN2 ("SG2") from scratch with a dataset of female portraits
   3.2. [The L model](#model-l)<br>
   3.3. [The XL and XXL models](#models-xl-xxl)<br>
 4. [Conclusion](#conclusion)<br>
-5. [Update: The XXXL model (250M parameters, doubled latent size](#model-xxxl)<br>
+5. [Update: The XXXL model (250M parameters, 2× latent size)](#model-xxxl)<br>
 Annex A. [Dataset enhancement techniques](#techniques)<br>
 Annex B. [Negative results](#negatives)<br>
 Annex C. [Some ideas to explore](#speculations)<br>
@@ -213,7 +213,7 @@ Regularization settings should be adjusted for the particular training set. It s
 
 __Acknowledgments__ I would like to thank Tero Karras et al; also Shawn, Gwern, Aydao, Sid and Louis for helpful input and my friend for providing the GPUs.
 
-### Update: the XXXL model (250M parameters, doubled latent size)<a name="model-xxxl"></a>
+### Update: the XXXL model (250M parameters, 2× latent size)<a name="model-xxxl"></a>
 
 Motivated by Aydao's successful [This anime does not exist ("TADNE")](https://thisanimedoesnotexist.ai) model, with increased latent space dimensionality, ([details](https://www.gwern.net/Faces#extended-stylegan2-danbooru2019-aydao) on Gwern's website) I decided to scale SG2 even further, as far as VRAM and compute limits would allow. The latent size has been doubled (`z_dim = w_dim = 1024`), the mapping network has been made shallower (`map = 6`), and the total parameter count has been increased to ~250M (by specifying `channels_dict = { 1024:96, 512:192, 256:384, 128:768, 64:1024, 32:1024, 16:1024, 8:1024, 4:1024 }` in both D and G in `networks.py`), making it >4× larger than default `config-f` settings. For this experiment I used [the official StyleGAN2 PyTorch implementation](https://github.com/NVlabs/stylegan2-ada-pytorch). I was able to fit this configuration into 32Gb of VRAM by using mixed precision (`num_fp16_res = 5`).
 
