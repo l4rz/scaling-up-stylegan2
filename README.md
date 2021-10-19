@@ -242,7 +242,15 @@ weight `d_loss.gamma` to `7.5`.
 2139 2663 2724 2902 3054  3109
 3165 3172 3254 3575 3822 3872 -->
 
-Because of the greater variety of modes and the smaller dataset size, the quality was nowhere near that of the `XXXL` model trained with a ragher homogeneous `XFHQ46K` dataset.
+Because of the greater variety of modes and the smaller dataset size, the quality was nowhere near that of the `XXXL` model trained with a ragher homogeneous `XFHQ46K` dataset. My concern was that increasing the latent space dimensionality would make the model's latent space more "bumpy," making it more difficult to navigate, especially with such a small dataset (N=24K). However, preliminary investigation by guided sampling with [CLIP](https://github.com/openai/CLIP) suggests that this is not the case. CLIP-guided optimizations in 𝑊 space seem to work seamlessly with rather gentle learning rates. Below is the result of 𝑤 optimization using `clip.tokenize("a girl with cat\'s ears who looks like a goth")`:
+
+
+<center>
+
+![](images/gothcatgirl.gif)
+
+</center>
+
 
 Two snapshots of the `XXXL` model trained with `COSPLAYFACE24K` dataset are available for download:
 
